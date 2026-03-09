@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Activity Log - AI-SOC</title>
+  <style>
+    :root {
+      --bg-primary: #0a0e1a;
+      --bg-secondary: #111827;
+      --bg-tertiary: #1f2937;
+      --text-primary: #f9fafb;
+      --text-secondary: #9ca3af;
+      --border-color: #374151;
+      
+      /* Category Colors */
+      --color-system: #3b82f6;
+      --color-rag: #06b6d4;
+      --color-agent: #8b5cf6;
+      --color-network: #10b981;
+      --color-threat: #eab308;
+      --color-vuln: #f97316;
+      --color-attack: #ef4444;
+      --color-alert: #dc2626;
+      --color-dataset: #14b8a6;
+      --color-user: #a855f7;
+      --color-scheduler: #6b7280;
+      --color-ioc: #ec4899;
+      --color-sim: #f43f5e;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monospace;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.6;
+      overflow: hidden;
+    }
+
+    .app-container {
+      display: flex;
+      height: 100vh;
+      width: 100vw;
+    }
+
+    /* Main Log Area */
+    .log-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .log-header {
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border-color);
+      padding: 15px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .log-title {
+      font-size: 18px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .log-stats {
+      display: flex;
+      gap: 20px;
+    }
+
+    .stat-item {
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--color-rag);
+    }
+
+    .stat-label {
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    /* Filter Bar */
+    .filter-bar {
+      background: var(--bg-tertiary);
+      padding: 15px 20px;
+      display: flex;
+      gap: 15px;
+      flex-wrap: wrap;
+      align-items: center;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .filter-label {
+      font-size: 11px;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+    }
+
+    .filter-select, .filter-input {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      padding: 8px 12px;
+      color: var(--text-primary);
+      font-size: 13px;
+    }
+
+    .filter-select:focus, .filter-input:focus {
+      outline: none;
+      border-color: var(--color-rag);
+    }
+
+    /* Log Feed */
+    .log-feed {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      background: #000;
+    }
+
+    .log-entry {
+      display: flex;
+      gap: 10px;
+      padding: 8px 12px;
+      border-bottom: 1px solid #1a1a1a;
+      transition: background 0.2s;
+    }
+
+    .log-entry:hover {
+      background: var(--bg-tertiary);
+    }
+
+    .log-entry.expanded {
+      background: var(--bg-tertiary);
+    }
+
+    .log-timestamp {
+      color: var(--text-secondary);
+      flex-shrink: 0;
+      width: 90px;
+    }
+
+    .log-category {
+      flex-shrink: 0;
+      width: 18px;
+      height: 18px;
+      border-radius: 3px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: bold;
+    }
+
+    .log-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .log-header-line {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 4px;
+    }
+
+    .log-module {
+      color: var(--text-secondary);
+      font-weight: 600;
+    }
+
+    .log-event-type {
+      font-weight: 700;
+    }
+
+    .log-message {
+      color: var(--text-primary);
+      margin-bottom: 6px;
+    }
+
+    .log-metadata {
+      background: var(--bg-secondary);
+      border-radius: 4px;
+      padding: 8px 12px;
+      margin-top: 8px;
+      font-size: 11px;
+      display: none;
+    }
+
+    .log-entry.expanded .log-metadata {
+      display: block;
+    }
+
+    .metadata-key {
+      color: var(--color-rag);
+    }
+
+    .metadata-value {
+      color: var(--text-secondary);
+    }
+
+    /* Severity Indicators */
+    .severity-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    .severity-debug { background: #6b7280; }
+    .severity-info { background: #3b82f6; }
+    .severity-warning { background: #eab308; }
+    .severity-error { background: #f97316; }
+    .severity-critical { background: #dc2626; animation: pulse 1s infinite; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    /* Side Panel */
+    .side-panel {
+      width: 350px;
+      background: var(--bg-secondary);
+      border-left: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .side-panel-header {
+      padding: 15px 20px;
+      border-bottom: 1px solid var(--border-color);
+      font-weight: 600;
+    }
+
+    .side-panel-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+    }
+
+    /* Timeline */
+    .timeline {
+      position: relative;
+      padding-left: 20px;
+    }
+
+    .timeline::before {
+      content: '';
+      position: absolute;
+      left: 7px;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: var(--border-color);
+    }
+
+    .timeline-item {
+      position: relative;
+      padding-bottom: 15px;
+    }
+
+    .timeline-item::before {
+      content: '';
+      position: absolute;
+      left: -17px;
+      top: 4px;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--color-rag);
+    }
+
+    .timeline-time {
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    .timeline-event {
+      font-size: 12px;
+      margin-top: 4px;
+    }
+
+    /* Category Legend */
+    .category-legend {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+    }
+
+    .legend-color {
+      width: 12px;
+      height: 12px;
+      border-radius: 2px;
+    }
+
+    /* Controls */
+    .control-buttons {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn {
+      padding: 8px 16px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      color: var(--text-primary);
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn:hover {
+      background: var(--color-rag);
+      color: #000;
+    }
+
+    .btn.danger {
+      border-color: var(--color-alert);
+    }
+
+    .btn.danger:hover {
+      background: var(--color-alert);
+    }
+
+    /* Live indicator */
+    .live-indicator {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      background: var(--bg-tertiary);
+      border-radius: 20px;
+      font-size: 11px;
+    }
+
+    .live-dot {
+      width: 8px;
+      height: 8px;
+      background: var(--color-alert);
+      border-radius: 50%;
+      animation: pulse 1s infinite;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: var(--bg-primary);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--border-color);
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--text-secondary);
+    }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+    <!-- Main Log Area -->
+    <div class="log-container">
+      <!-- Header -->
+      <div class="log-header">
+        <div class="log-title">
+          📋 SOC Activity Log
+        </div>
+        <div class="log-stats">
+          <div class="stat-item">
+            <div class="stat-value" id="stat-total">0</div>
+            <div class="stat-label">Total Events</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value" id="stat-recent">0</div>
+            <div class="stat-label">Last Hour</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value" id="stat-alerts">0</div>
+            <div class="stat-label">Alerts</div>
+          </div>
+        </div>
+        <div class="control-buttons">
+          <div class="live-indicator">
+            <div class="live-dot"></div>
+            <span>LIVE</span>
+          </div>
+          <button class="btn" id="pause-btn">⏸️ Pause</button>
+          <button class="btn" id="clear-btn">🗑️ Clear</button>
+          <button class="btn" id="export-btn">📥 Export</button>
+        </div>
+      </div>
+
+      <!-- Filter Bar -->
+      <div class="filter-bar">
+        <div class="filter-group">
+          <label class="filter-label">Category</label>
+          <select class="filter-select" id="filter-category">
+            <option value="">All Categories</option>
+            <option value="SYSTEM">SYSTEM</option>
+            <option value="RAG_PIPELINE">RAG_PIPELINE</option>
+            <option value="AI_AGENT">AI_AGENT</option>
+            <option value="NETWORK_ANALYSIS">NETWORK_ANALYSIS</option>
+            <option value="THREAT_INTELLIGENCE">THREAT_INTELLIGENCE</option>
+            <option value="SECURITY_ALERT">SECURITY_ALERT</option>
+            <option value="ATTACK_MAP">ATTACK_MAP</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label class="filter-label">Severity</label>
+          <select class="filter-select" id="filter-severity">
+            <option value="">All Severities</option>
+            <option value="critical">Critical</option>
+            <option value="error">Error</option>
+            <option value="warning">Warning</option>
+            <option value="info">Info</option>
+            <option value="debug">Debug</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label class="filter-label">Search</label>
+          <input type="text" class="filter-input" id="filter-search" placeholder="Search logs...">
+        </div>
+        <div class="filter-group">
+          <label class="filter-label">Module</label>
+          <input type="text" class="filter-input" id="filter-module" placeholder="Filter by module">
+        </div>
+      </div>
+
+      <!-- Log Feed -->
+      <div class="log-feed" id="log-feed">
+        <!-- Log entries will be inserted here -->
+      </div>
+    </div>
+
+    <!-- Side Panel -->
+    <div class="side-panel">
+      <div class="side-panel-header">
+        📊 Activity Overview
+      </div>
+      <div class="side-panel-content">
+        <!-- Category Legend -->
+        <div class="category-legend" id="category-legend">
+          <!-- Populated by JS -->
+        </div>
+
+        <!-- Timeline -->
+        <div class="side-panel-header" style="padding-left: 0; margin-bottom: 15px;">
+          ⏱️ Recent Activity
+        </div>
+        <div class="timeline" id="activity-timeline">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = 'http://127.0.0.1:8000';
+    
+    // State
+    let events = [];
+    let ws = null;
+    let isPaused = false;
+    let maxEvents = 500;
+
+    // Category colors
+    const CATEGORY_COLORS = {
+      'SYSTEM': '#3b82f6',
+      'RAG_PIPELINE': '#06b6d4',
+      'AI_AGENT': '#8b5cf6',
+      'NETWORK_ANALYSIS': '#10b981',
+      'THREAT_INTELLIGENCE': '#eab308',
+      'VULNERABILITY_DETECTION': '#f97316',
+      'ATTACK_MAP': '#ef4444',
+      'DATASET_UPDATE': '#14b8a6',
+      'USER_QUERY': '#a855f7',
+      'SECURITY_ALERT': '#dc2626',
+      'SCHEDULER': '#6b7280',
+      'IOC_CORRELATION': '#ec4899',
+      'ATTACK_SIMULATION': '#f43f5e',
+    };
+
+    // Category icons
+    const CATEGORY_ICONS = {
+      'SYSTEM': '⚙️',
+      'RAG_PIPELINE': '🔍',
+      'AI_AGENT': '🤖',
+      'NETWORK_ANALYSIS': '🌐',
+      'THREAT_INTELLIGENCE': '📡',
+      'VULNERABILITY_DETECTION': '⚠️',
+      'ATTACK_MAP': '🗺️',
+      'DATASET_UPDATE': '📊',
+      'USER_QUERY': '💬',
+      'SECURITY_ALERT': '🚨',
+      'SCHEDULER': '⏰',
+      'IOC_CORRELATION': '🔗',
+      'ATTACK_SIMULATION': '🎯',
+    };
+
+    // Initialize WebSocket
+    function connectWebSocket() {
+      ws = new WebSocket(`ws://${API_BASE.replace('http', 'ws')}/ws/activity`);
+
+      ws.onopen = () => {
+        console.log('Connected to activity stream');
+        addSystemMessage('Connected to activity stream');
+      };
+
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        
+        if (data.type === 'connection_established') {
+          // Load recent events
+          data.recent_events.forEach(e => addEvent(e, false));
+        } else {
+          // New event
+          addEvent(data);
+        }
+      };
+
+      ws.onclose = () => {
+        console.log('Disconnected, reconnecting...');
+        addSystemMessage('Disconnected, reconnecting...');
+        setTimeout(connectWebSocket, 3000);
+      };
+
+      ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+      };
+    }
+
+    // Add event to feed
+    function addEvent(event, scroll = true) {
+      if (!isPaused) {
+        events.unshift(event);
+        if (events.length > maxEvents) events.pop();
+        
+        renderEvent(event);
+        updateStats();
+        updateTimeline();
+        
+        if (scroll) {
+          const feed = document.getElementById('log-feed');
+          feed.scrollTop = 0;
+        }
+      }
+    }
+
+    // Render single event
+    function renderEvent(event) {
+      const feed = document.getElementById('log-feed');
+      const filters = getFilters();
+      
+      // Apply filters
+      if (filters.category && event.category !== filters.category) return;
+      if (filters.severity && event.severity !== filters.severity) return;
+      if (filters.search && !matchesSearch(event, filters.search)) return;
+      if (filters.module && !event.module.includes(filters.module)) return;
+
+      const entry = document.createElement('div');
+      entry.className = 'log-entry';
+      entry.dataset.id = event.id;
+      entry.onclick = () => entry.classList.toggle('expanded');
+
+      const time = new Date(event.timestamp).toLocaleTimeString();
+      const icon = CATEGORY_ICONS[event.category] || '📄';
+      const color = CATEGORY_COLORS[event.category] || '#9ca3af';
+
+      entry.innerHTML = `
+        <div class="log-timestamp">${time}</div>
+        <div class="log-category" style="background: ${color}">${icon}</div>
+        <div class="log-content">
+          <div class="log-header-line">
+            <span class="severity-dot severity-${event.severity}"></span>
+            <span class="log-module">${event.module}</span>
+            <span class="log-event-type" style="color: ${color}">${event.event_type}</span>
+          </div>
+          <div class="log-message">${escapeHtml(event.message)}</div>
+          ${Object.keys(event.metadata || {}).length > 0 ? `
+            <div class="log-metadata">
+              ${Object.entries(event.metadata).map(([k, v]) => `
+                <div><span class="metadata-key">${k}:</span> <span class="metadata-value">${escapeHtml(JSON.stringify(v))}</span></div>
+              `).join('')}
+            </div>
+          ` : ''}
+        </div>
+      `;
+
+      feed.insertBefore(entry, feed.firstChild);
+
+      // Limit rendered entries
+      while (feed.children.length > maxEvents) {
+        feed.removeChild(feed.lastChild);
+      }
+    }
+
+    // Get active filters
+    function getFilters() {
+      return {
+        category: document.getElementById('filter-category').value,
+        severity: document.getElementById('filter-severity').value,
+        search: document.getElementById('filter-search').value,
+        module: document.getElementById('filter-module').value,
+      };
+    }
+
+    // Check if event matches search
+    function matchesSearch(event, query) {
+      const q = query.toLowerCase();
+      return event.message.toLowerCase().includes(q) ||
+             event.event_type.toLowerCase().includes(q) ||
+             event.module.toLowerCase().includes(q) ||
+             JSON.stringify(event.metadata).toLowerCase().includes(q);
+    }
+
+    // Update statistics
+    function updateStats() {
+      const now = new Date();
+      const oneHourAgo = new Date(now - 3600000);
+
+      const recentCount = events.filter(e => 
+        new Date(e.timestamp) > oneHourAgo
+      ).length;
+
+      const alertCount = events.filter(e => 
+        e.category === 'SECURITY_ALERT'
+      ).length;
+
+      document.getElementById('stat-total').textContent = events.length;
+      document.getElementById('stat-recent').textContent = recentCount;
+      document.getElementById('stat-alerts').textContent = alertCount;
+    }
+
+    // Update timeline
+    function updateTimeline() {
+      const timeline = document.getElementById('activity-timeline');
+      const recentEvents = events.slice(0, 10);
+
+      timeline.innerHTML = recentEvents.map(e => `
+        <div class="timeline-item">
+          <div class="timeline-time">${new Date(e.timestamp).toLocaleTimeString()}</div>
+          <div class="timeline-event">${e.event_type}</div>
+        </div>
+      `).join('');
+    }
+
+    // Render category legend
+    function renderCategoryLegend() {
+      const legend = document.getElementById('category-legend');
+      legend.innerHTML = Object.entries(CATEGORY_COLORS).map(([name, color]) => `
+        <div class="legend-item">
+          <div class="legend-color" style="background: ${color}"></div>
+          <span>${name}</span>
+        </div>
+      `).join('');
+    }
+
+    // Add system message
+    function addSystemMessage(message) {
+      const feed = document.getElementById('log-feed');
+      const entry = document.createElement('div');
+      entry.className = 'log-entry';
+      entry.innerHTML = `
+        <div class="log-timestamp">${new Date().toLocaleTimeString()}</div>
+        <div class="log-content">
+          <div class="log-message" style="color: var(--text-secondary)">${message}</div>
+        </div>
+      `;
+      feed.insertBefore(entry, feed.firstChild);
+    }
+
+    // Escape HTML
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Load initial events
+    async function loadInitialEvents() {
+      try {
+        const response = await fetch(`${API_BASE}/api/activity_stream?limit=100`);
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+          data.events.forEach(e => addEvent(e, false));
+        }
+      } catch (error) {
+        console.error('Failed to load events:', error);
+        addSystemMessage('Failed to load initial events');
+      }
+    }
+
+    // Export logs
+    async function exportLogs(format = 'json') {
+      try {
+        const response = await fetch(`${API_BASE}/api/activity_export?format=${format}`);
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `activity_log_${new Date().toISOString().split('T')[0]}.${format}`;
+        a.click();
+        URL.revokeObjectURL(url);
+      } catch (error) {
+        console.error('Export failed:', error);
+      }
+    }
+
+    // Event listeners
+    document.getElementById('pause-btn').onclick = function() {
+      isPaused = !isPaused;
+      this.textContent = isPaused ? '▶️ Resume' : '⏸️ Pause';
+    };
+
+    document.getElementById('clear-btn').onclick = () => {
+      events = [];
+      document.getElementById('log-feed').innerHTML = '';
+      updateStats();
+      updateTimeline();
+      addSystemMessage('Log cleared');
+    };
+
+    document.getElementById('export-btn').onclick = () => exportLogs('json');
+
+    // Filter change handlers
+    ['filter-category', 'filter-severity', 'filter-search', 'filter-module'].forEach(id => {
+      document.getElementById(id).addEventListener('change', () => {
+        const feed = document.getElementById('log-feed');
+        feed.innerHTML = '';
+        events.forEach(e => renderEvent(e));
+      });
+      
+      document.getElementById(id).addEventListener('input', () => {
+        const feed = document.getElementById('log-feed');
+        feed.innerHTML = '';
+        events.forEach(e => renderEvent(e));
+      });
+    });
+
+    // Initialize
+    renderCategoryLegend();
+    loadInitialEvents();
+    connectWebSocket();
+  </script>
+</body>
+</html>

@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI-SOC Command Center</title>
+  <style>
+    :root {
+      --bg-primary: #0a0e1a;
+      --bg-secondary: #111827;
+      --bg-tertiary: #1f2937;
+      --text-primary: #f9fafb;
+      --text-secondary: #9ca3af;
+      --accent-red: #ef4444;
+      --accent-orange: #f97316;
+      --accent-yellow: #eab308;
+      --accent-green: #10b981;
+      --accent-blue: #3b82f6;
+      --accent-purple: #8b5cf6;
+      --accent-cyan: #06b6d4;
+      --border-color: #374151;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monospace;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    .container { max-width: 2000px; margin: 0 auto; padding: 20px; }
+
+    /* Header */
+    .header {
+      background: linear-gradient(135deg, var(--bg-secondary), var(--bg-tertiary));
+      border-bottom: 1px solid var(--border-color);
+      padding: 20px 0;
+      margin-bottom: 30px;
+    }
+
+    .header-content {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .logo-icon {
+      width: 60px;
+      height: 60px;
+      background: linear-gradient(135deg, var(--accent-red), var(--accent-purple));
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+    }
+
+    .logo h1 { font-size: 28px; font-weight: 700; }
+    .logo span { color: var(--text-secondary); font-size: 14px; }
+
+    .status-bar {
+      display: flex;
+      gap: 15px;
+      align-items: center;
+    }
+
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      background: var(--bg-tertiary);
+      border-radius: 20px;
+      font-size: 13px;
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--accent-green);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    /* Navigation */
+    .nav-tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 30px;
+      flex-wrap: wrap;
+    }
+
+    .nav-tab {
+      padding: 12px 24px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      color: var(--text-primary);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+
+    .nav-tab:hover {
+      background: var(--bg-tertiary);
+      border-color: var(--accent-blue);
+    }
+
+    .nav-tab.active {
+      background: var(--accent-blue);
+      border-color: var(--accent-blue);
+    }
+
+    /* Dashboard Grid */
+    .dashboard {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+
+    .card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 20px;
+    }
+
+    .card.full-width { grid-column: 1 / -1; }
+    .card.half-width { grid-column: span 2; }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .card-title {
+      font-size: 18px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .card-icon {
+      width: 36px;
+      height: 36px;
+      background: var(--bg-tertiary);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+
+    /* Stats Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 15px;
+    }
+
+    .stat-card {
+      background: var(--bg-tertiary);
+      padding: 20px;
+      border-radius: 8px;
+      text-align: center;
+      border-left: 4px solid var(--accent-blue);
+    }
+
+    .stat-card.critical { border-left-color: var(--accent-red); }
+    .stat-card.high { border-left-color: var(--accent-orange); }
+    .stat-card.medium { border-left-color: var(--accent-yellow); }
+
+    .stat-value {
+      font-size: 36px;
+      font-weight: 700;
+    }
+
+    .stat-value.critical { color: var(--accent-red); }
+    .stat-value.high { color: var(--accent-orange); }
+    .stat-value.medium { color: var(--accent-yellow); }
+    .stat-value.info { color: var(--accent-blue); }
+    .stat-value.success { color: var(--accent-green); }
+
+    .stat-label {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 5px;
+      text-transform: uppercase;
+    }
+
+    /* Alert List */
+    .alert-list {
+      list-style: none;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .alert-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 12px;
+      border-bottom: 1px solid var(--border-color);
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .alert-item:hover { background: var(--bg-tertiary); }
+
+    .alert-severity {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      margin-top: 4px;
+    }
+
+    .alert-severity.critical { background: var(--accent-red); animation: pulse 1s infinite; }
+    .alert-severity.high { background: var(--accent-orange); }
+    .alert-severity.medium { background: var(--accent-yellow); }
+    .alert-severity.low { background: var(--accent-blue); }
+
+    .alert-content { flex: 1; }
+    .alert-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+    .alert-meta { font-size: 12px; color: var(--text-secondary); }
+
+    /* Risk Meter */
+    .risk-meter {
+      margin: 20px 0;
+    }
+
+    .risk-bar {
+      height: 20px;
+      background: var(--bg-tertiary);
+      border-radius: 10px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .risk-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent-green), var(--accent-yellow), var(--accent-orange), var(--accent-red));
+      transition: width 0.5s;
+    }
+
+    .risk-labels {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 8px;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    /* Loading */
+    .loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 200px;
+      color: var(--text-secondary);
+    }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid var(--border-color);
+      border-top-color: var(--accent-blue);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .dashboard { grid-template-columns: 1fr; }
+      .header-content { flex-direction: column; gap: 15px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="container">
+      <div class="header-content">
+        <div class="logo">
+          <div class="logo-icon">🛡️</div>
+          <div>
+            <h1>AI-SOC Command Center</h1>
+            <span>Autonomous Security Operations Center</span>
+          </div>
+        </div>
+        <div class="status-bar">
+          <div class="status-indicator">
+            <div class="status-dot"></div>
+            <span>All Systems Operational</span>
+          </div>
+          <div class="status-indicator">
+            <span id="current-time"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+    <!-- Navigation -->
+    <div class="nav-tabs">
+      <a href="command_center.html" class="nav-tab active">🎯 Command Center</a>
+      <a href="index.html" class="nav-tab">🏠 Home</a>
+      <a href="attack_map.html" class="nav-tab">🗺️ Attack Map</a>
+      <a href="activity_log.html" class="nav-tab">📋 Activity Log</a>
+      <a href="security.html" class="nav-tab">🛡️ Security</a>
+    </div>
+
+    <!-- Dashboard -->
+    <div class="dashboard">
+      <!-- Overall Security Posture -->
+      <div class="card full-width">
+        <div class="card-header">
+          <div class="card-title">
+            <div class="card-icon">📊</div>
+            Overall Security Posture
+          </div>
+        </div>
+        <div class="card-content">
+          <div class="stats-grid" id="posture-stats">
+            <div class="stat-card critical">
+              <div class="stat-value critical" id="stat-critical">-</div>
+              <div class="stat-label">Critical Alerts</div>
+            </div>
+            <div class="stat-card high">
+              <div class="stat-value high" id="stat-high">-</div>
+              <div class="stat-label">High Alerts</div>
+            </div>
+            <div class="stat-card medium">
+              <div class="stat-value medium" id="stat-medium">-</div>
+              <div class="stat-label">Medium Alerts</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value info" id="stat-rules">-</div>
+              <div class="stat-label">Detection Rules</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value success" id="stat-hunts">-</div>
+              <div class="stat-label">Hunt Queries</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="stat-playbooks">-</div>
+              <div class="stat-label">SOAR Playbooks</div>
+            </div>
+          </div>
+          
+          <div class="risk-meter">
+            <div class="risk-bar">
+              <div class="risk-fill" id="risk-fill" style="width: 0%"></div>
+            </div>
+            <div class="risk-labels">
+              <span>Minimal</span>
+              <span>Low</span>
+              <span>Medium</span>
+              <span>High</span>
+              <span>Critical</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Active Threats -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <div class="card-icon">🚨</div>
+            Active Threats
+          </div>
+        </div>
+        <div class="card-content">
+          <ul class="alert-list" id="threat-list">
+            <li class="loading"><div class="spinner"></div></li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Zero-Day Alerts -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <div class="card-icon">⚠️</div>
+            Zero-Day Monitor
+          </div>
+        </div>
+        <div class="card-content">
+          <ul class="alert-list" id="zero-day-list">
+            <li class="loading"><div class="spinner"></div></li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- High Risk Hosts -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <div class="card-icon">🖥️</div>
+            High Risk Hosts
+          </div>
+        </div>
+        <div class="card-content">
+          <ul class="alert-list" id="risk-hosts-list">
+            <li class="loading"><div class="spinner"></div></li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Endpoint Threats -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <div class="card-icon">💻</div>
+            Endpoint Threats
+          </div>
+        </div>
+        <div class="card-content">
+          <ul class="alert-list" id="endpoint-list">
+            <li class="loading"><div class="spinner"></div></li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Detection Rules Status -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <div class="card-icon">📜</div>
+            Detection Rules
+          </div>
+        </div>
+        <div class="card-content">
+          <ul class="alert-list" id="rules-list">
+            <li class="loading"><div class="spinner"></div></li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- SOAR Playbooks -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <div class="card-icon">⚡</div>
+            SOAR Playbooks
+          </div>
+        </div>
+        <div class="card-content">
+          <ul class="alert-list" id="playbooks-list">
+            <li class="loading"><div class="spinner"></div></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = 'http://127.0.0.1:8000';
+
+    // Update time
+    function updateTime() {
+      const now = new Date();
+      document.getElementById('current-time').textContent = now.toLocaleString();
+    }
+    setInterval(updateTime, 1000);
+    updateTime();
+
+    // Load all statistics
+    async function loadAllStats() {
+      try {
+        const [detectionStats, huntStats, soarStats, zeroDayStats, endpointStats, riskStats] = await Promise.all([
+          fetch(`${API_BASE}/api/detections/stats`).then(r => r.json()),
+          fetch(`${API_BASE}/api/threat_hunting/stats`).then(r => r.json()),
+          fetch(`${API_BASE}/api/soar/stats`).then(r => r.json()),
+          fetch(`${API_BASE}/api/zero_day/stats`).then(r => r.json()),
+          fetch(`${API_BASE}/api/endpoint/stats`).then(r => r.json()),
+          fetch(`${API_BASE}/api/risk/stats`).then(r => r.json()),
+        ]);
+
+        // Update stats
+        const detection = detectionStats.data || {};
+        const alertsBySeverity = detection.alerts_by_severity || {};
+        
+        document.getElementById('stat-critical').textContent = alertsBySeverity.critical || 0;
+        document.getElementById('stat-high').textContent = alertsBySeverity.high || 0;
+        document.getElementById('stat-medium').textContent = alertsBySeverity.medium || 0;
+        document.getElementById('stat-rules').textContent = detection.enabled_rules || 0;
+        document.getElementById('stat-hunts').textContent = (huntStats.data || {}).total_queries || 0;
+        document.getElementById('stat-playbooks').textContent = (soarStats.data || {}).enabled_playbooks || 0;
+
+        // Calculate overall risk
+        const riskData = riskStats.data || {};
+        const avgRisk = riskData.average_host_score || 0;
+        document.getElementById('risk-fill').style.width = `${avgRisk}%`;
+
+      } catch (error) {
+        console.error('Failed to load stats:', error);
+      }
+    }
+
+    // Load active threats
+    async function loadThreats() {
+      try {
+        const [alerts, zeroDay, riskHosts, endpoint] = await Promise.all([
+          fetch(`${API_BASE}/api/detections/alerts?status=new&limit=10`).then(r => r.json()),
+          fetch(`${API_BASE}/api/zero_day/alerts?severity=critical&limit=5`).then(r => r.json()),
+          fetch(`${API_BASE}/api/risk/hosts?limit=5`).then(r => r.json()),
+          fetch(`${API_BASE}/api/endpoint/events?severity=critical&limit=5`).then(r => r.json()),
+        ]);
+
+        // Active alerts
+        const alertList = document.getElementById('threat-list');
+        if (alerts.alerts && alerts.alerts.length > 0) {
+          alertList.innerHTML = alerts.alerts.map(a => `
+            <li class="alert-item">
+              <div class="alert-severity ${a.severity}"></div>
+              <div class="alert-content">
+                <div class="alert-title">${a.rule_name}</div>
+                <div class="alert-meta">${new Date(a.timestamp).toLocaleString()}</div>
+              </div>
+            </li>
+          `).join('');
+        } else {
+          alertList.innerHTML = '<li class="loading">No active threats</li>';
+        }
+
+        // Zero-day alerts
+        const zeroDayList = document.getElementById('zero-day-list');
+        if (zeroDay.alerts && zeroDay.alerts.length > 0) {
+          zeroDayList.innerHTML = zeroDay.alerts.map(a => `
+            <li class="alert-item">
+              <div class="alert-severity critical"></div>
+              <div class="alert-content">
+                <div class="alert-title">${a.title}</div>
+                <div class="alert-meta">Risk: ${a.risk_score}/100</div>
+              </div>
+            </li>
+          `).join('');
+        } else {
+          zeroDayList.innerHTML = '<li class="loading">No zero-day alerts</li>';
+        }
+
+        // Risk hosts
+        const riskList = document.getElementById('risk-hosts-list');
+        if (riskHosts.hosts && riskHosts.hosts.length > 0) {
+          riskList.innerHTML = riskHosts.hosts.map(h => `
+            <li class="alert-item">
+              <div class="alert-severity ${h.risk_level === 'critical' ? 'critical' : 'high'}"></div>
+              <div class="alert-content">
+                <div class="alert-title">${h.hostname}</div>
+                <div class="alert-meta">Risk Score: ${h.total_score}/100</div>
+              </div>
+            </li>
+          `).join('');
+        } else {
+          riskList.innerHTML = '<li class="loading">No high-risk hosts</li>';
+        }
+
+        // Endpoint threats
+        const endpointList = document.getElementById('endpoint-list');
+        if (endpoint.events && endpoint.events.length > 0) {
+          endpointList.innerHTML = endpoint.events.map(e => `
+            <li class="alert-item">
+              <div class="alert-severity critical"></div>
+              <div class="alert-content">
+                <div class="alert-title">${e.process_name || 'Unknown Process'}</div>
+                <div class="alert-meta">${e.hostname} • ${e.event_type}</div>
+              </div>
+            </li>
+          `).join('');
+        } else {
+          endpointList.innerHTML = '<li class="loading">No endpoint threats</li>';
+        }
+
+      } catch (error) {
+        console.error('Failed to load threats:', error);
+      }
+    }
+
+    // Load detection rules
+    async function loadRules() {
+      try {
+        const response = await fetch(`${API_BASE}/api/detections/rules`);
+        const data = await response.json();
+        
+        const list = document.getElementById('rules-list');
+        if (data.rules && data.rules.length > 0) {
+          list.innerHTML = data.rules.slice(0, 10).map(r => `
+            <li class="alert-item">
+              <div class="alert-severity ${r.severity === 'critical' ? 'critical' : r.severity === 'high' ? 'high' : 'medium'}"></div>
+              <div class="alert-content">
+                <div class="alert-title">${r.name}</div>
+                <div class="alert-meta">${r.enabled ? '✓ Enabled' : '✗ Disabled'}</div>
+              </div>
+            </li>
+          `).join('');
+        }
+      } catch (error) {
+        console.error('Failed to load rules:', error);
+      }
+    }
+
+    // Load playbooks
+    async function loadPlaybooks() {
+      try {
+        const response = await fetch(`${API_BASE}/api/soar/playbooks`);
+        const data = await response.json();
+        
+        const list = document.getElementById('playbooks-list');
+        if (data.playbooks && data.playbooks.length > 0) {
+          list.innerHTML = data.playbooks.map(p => `
+            <li class="alert-item">
+              <div class="alert-severity" style="background: var(--accent-purple)"></div>
+              <div class="alert-content">
+                <div class="alert-title">${p.name}</div>
+                <div class="alert-meta">${p.steps.length} steps • ${p.enabled ? '✓ Active' : '✗ Disabled'}</div>
+              </div>
+            </li>
+          `).join('');
+        }
+      } catch (error) {
+        console.error('Failed to load playbooks:', error);
+      }
+    }
+
+    // Initialize
+    loadAllStats();
+    loadThreats();
+    loadRules();
+    loadPlaybooks();
+
+    // Auto-refresh
+    setInterval(loadAllStats, 30000);
+    setInterval(loadThreats, 60000);
+  </script>
+</body>
+</html>

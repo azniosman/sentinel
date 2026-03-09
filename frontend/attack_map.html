@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Attack Map - AI-SOC</title>
+  <style>
+    :root {
+      --bg-primary: #0a0e1a;
+      --bg-secondary: #111827;
+      --bg-tertiary: #1f2937;
+      --text-primary: #f9fafb;
+      --text-secondary: #9ca3af;
+      --accent-red: #ef4444;
+      --accent-orange: #f97316;
+      --accent-yellow: #eab308;
+      --accent-purple: #8b5cf6;
+      --accent-cyan: #06b6d4;
+      --accent-green: #10b981;
+      --border-color: #374151;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.6;
+      overflow: hidden;
+    }
+
+    .app-container {
+      display: flex;
+      height: 100vh;
+      width: 100vw;
+    }
+
+    /* Main Map Area */
+    .map-container {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+    }
+
+    #globe-viz {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Side Panel */
+    .side-panel {
+      width: 400px;
+      background: var(--bg-secondary);
+      border-left: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .side-panel-header {
+      padding: 20px;
+      border-bottom: 1px solid var(--border-color);
+      background: var(--bg-tertiary);
+    }
+
+    .side-panel-title {
+      font-size: 18px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .side-panel-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+    }
+
+    /* Event Detail */
+    .event-detail {
+      background: var(--bg-tertiary);
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .event-detail-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+
+    .event-type-badge {
+      padding: 4px 12px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .event-type-badge.ransomware { background: var(--accent-red); }
+    .event-type-badge.ddos { background: var(--accent-orange); }
+    .event-type-badge.phishing { background: var(--accent-yellow); color: #000; }
+    .event-type-badge.malware { background: var(--accent-purple); }
+    .event-type-badge.zero_day { background: #dc2626; }
+    .event-type-badge.credential_theft { background: var(--accent-cyan); color: #000; }
+
+    .severity-badge {
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .severity-badge.critical { background: #dc2626; }
+    .severity-badge.high { background: #ea580c; }
+    .severity-badge.medium { background: #ca8a04; }
+    .severity-badge.low { background: #16a34a; }
+
+    .event-detail-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .event-detail-row:last-child {
+      border-bottom: none;
+    }
+
+    .event-detail-label {
+      color: var(--text-secondary);
+      font-size: 13px;
+    }
+
+    .event-detail-value {
+      font-weight: 500;
+      font-size: 13px;
+      text-align: right;
+    }
+
+    /* AI Analysis */
+    .ai-analysis {
+      background: var(--bg-tertiary);
+      border-radius: 8px;
+      padding: 15px;
+      margin-top: 15px;
+    }
+
+    .ai-analysis-title {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .ai-analysis-content {
+      font-size: 13px;
+      line-height: 1.6;
+      color: var(--text-secondary);
+    }
+
+    /* Filter Panel */
+    .filter-panel {
+      background: var(--bg-tertiary);
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 20px;
+    }
+
+    .filter-panel-title {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+
+    .filter-group {
+      margin-bottom: 12px;
+    }
+
+    .filter-group:last-child {
+      margin-bottom: 0;
+    }
+
+    .filter-label {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-bottom: 6px;
+    }
+
+    .filter-select {
+      width: 100%;
+      padding: 8px 12px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      color: var(--text-primary);
+      font-size: 13px;
+    }
+
+    .filter-select:focus {
+      outline: none;
+      border-color: var(--accent-cyan);
+    }
+
+    /* Stats Panel */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .stat-card {
+      background: var(--bg-tertiary);
+      border-radius: 8px;
+      padding: 15px;
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--accent-cyan);
+    }
+
+    .stat-label {
+      font-size: 11px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+
+    /* Live Feed */
+    .live-feed {
+      background: #000;
+      border-radius: 8px;
+      padding: 10px;
+      font-family: 'Courier New', monospace;
+      font-size: 11px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .feed-item {
+      padding: 4px 0;
+      border-bottom: 1px solid #1a1a1a;
+    }
+
+    .feed-timestamp {
+      color: var(--text-secondary);
+    }
+
+    .feed-event {
+      color: var(--accent-red);
+    }
+
+    /* Controls */
+    .controls-panel {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 15px;
+      z-index: 1000;
+    }
+
+    .control-group {
+      margin-bottom: 12px;
+    }
+
+    .control-group:last-child {
+      margin-bottom: 0;
+    }
+
+    .control-label {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-bottom: 6px;
+    }
+
+    .control-btn {
+      padding: 8px 16px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      color: var(--text-primary);
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .control-btn:hover {
+      background: var(--accent-cyan);
+      color: #000;
+    }
+
+    .control-btn.active {
+      background: var(--accent-red);
+      border-color: var(--accent-red);
+    }
+
+    .toggle-switch {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .toggle-switch input {
+      width: 40px;
+      height: 20px;
+      appearance: none;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      position: relative;
+      cursor: pointer;
+    }
+
+    .toggle-switch input:checked {
+      background: var(--accent-cyan);
+    }
+
+    .toggle-switch input::after {
+      content: '';
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      background: #fff;
+      border-radius: 50%;
+      top: 1px;
+      left: 1px;
+      transition: transform 0.2s;
+    }
+
+    .toggle-switch input:checked::after {
+      transform: translateX(20px);
+    }
+
+    /* Loading */
+    .loading-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(10, 14, 26, 0.9);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+    }
+
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid var(--border-color);
+      border-top-color: var(--accent-cyan);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Responsive */
+    @media (max-width: 1200px) {
+      .side-panel {
+        width: 350px;
+      }
+    }
+  </style>
+  
+  <!-- Globe.gl -->
+  <script src="//unpkg.com/globe.gl"></script>
+</head>
+<body>
+  <div class="app-container">
+    <!-- Map Container -->
+    <div class="map-container">
+      <div id="globe-viz"></div>
+      
+      <!-- Controls -->
+      <div class="controls-panel">
+        <div class="control-group">
+          <div class="control-label">Simulation Mode</div>
+          <div class="toggle-switch">
+            <input type="checkbox" id="simulation-toggle">
+            <span>Generate Attacks</span>
+          </div>
+        </div>
+        <div class="control-group">
+          <button class="control-btn" id="refresh-btn">↻ Refresh Data</button>
+        </div>
+        <div class="control-group">
+          <button class="control-btn" id="clear-btn">Clear Arcs</button>
+        </div>
+        <div class="control-group">
+          <button class="control-btn" id="burst-btn">⚡ Burst Mode</button>
+        </div>
+      </div>
+      
+      <!-- Loading -->
+      <div class="loading-overlay" id="loading">
+        <div class="spinner"></div>
+      </div>
+    </div>
+
+    <!-- Side Panel -->
+    <div class="side-panel">
+      <div class="side-panel-header">
+        <div class="side-panel-title">
+          🛡️ Attack Intelligence
+        </div>
+      </div>
+      
+      <div class="side-panel-content">
+        <!-- Statistics -->
+        <div class="stats-grid" id="stats-grid">
+          <div class="stat-card">
+            <div class="stat-value" id="stat-total">0</div>
+            <div class="stat-label">Total Attacks</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="stat-active">0</div>
+            <div class="stat-label">Active</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="stat-critical">0</div>
+            <div class="stat-label">Critical</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="stat-actors">0</div>
+            <div class="stat-label">Threat Actors</div>
+          </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="filter-panel">
+          <div class="filter-panel-title">🔍 Filters</div>
+          <div class="filter-group">
+            <div class="filter-label">Attack Type</div>
+            <select class="filter-select" id="filter-type">
+              <option value="">All Types</option>
+              <option value="ransomware">Ransomware</option>
+              <option value="ddos">DDoS</option>
+              <option value="phishing">Phishing</option>
+              <option value="malware">Malware</option>
+              <option value="zero_day">Zero-Day</option>
+              <option value="credential_theft">Credential Theft</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <div class="filter-label">Severity</div>
+            <select class="filter-select" id="filter-severity">
+              <option value="">All Severities</option>
+              <option value="critical">Critical</option>
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <div class="filter-label">Status</div>
+            <select class="filter-select" id="filter-status">
+              <option value="">All Statuses</option>
+              <option value="active">Active</option>
+              <option value="investigating">Investigating</option>
+              <option value="mitigated">Mitigated</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Event Detail -->
+        <div id="event-detail-container">
+          <div class="event-detail">
+            <div class="event-detail-header">
+              <span class="event-type-badge" id="detail-type">-</span>
+              <span class="severity-badge" id="detail-severity">-</span>
+            </div>
+            <div class="event-detail-row">
+              <span class="event-detail-label">Origin</span>
+              <span class="event-detail-value" id="detail-origin">-</span>
+            </div>
+            <div class="event-detail-row">
+              <span class="event-detail-label">Target</span>
+              <span class="event-detail-value" id="detail-target">-</span>
+            </div>
+            <div class="event-detail-row">
+              <span class="event-detail-label">Threat Actor</span>
+              <span class="event-detail-value" id="detail-actor">-</span>
+            </div>
+            <div class="event-detail-row">
+              <span class="event-detail-label">Malware</span>
+              <span class="event-detail-value" id="detail-malware">-</span>
+            </div>
+            <div class="event-detail-row">
+              <span class="event-detail-label">Sector</span>
+              <span class="event-detail-value" id="detail-sector">-</span>
+            </div>
+            <div class="event-detail-row">
+              <span class="event-detail-label">CVE</span>
+              <span class="event-detail-value" id="detail-cve">-</span>
+            </div>
+            <div class="event-detail-row">
+              <span class="event-detail-label">Time</span>
+              <span class="event-detail-value" id="detail-time">-</span>
+            </div>
+
+            <!-- AI Analysis -->
+            <div class="ai-analysis">
+              <div class="ai-analysis-title">
+                🤖 AI Analysis
+              </div>
+              <div class="ai-analysis-content" id="ai-analysis">
+                Select an attack arc to view AI-powered analysis and mitigation guidance.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Live Feed -->
+        <div class="filter-panel">
+          <div class="filter-panel-title">📡 Live Attack Stream</div>
+          <div class="live-feed" id="live-feed">
+            <div class="feed-item">
+              <span class="feed-timestamp">--:--:--</span>
+              <span class="feed-event">Waiting for attacks...</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Configuration
+    const API_BASE = 'http://127.0.0.1:8000';
+    
+    // State
+    let globe = null;
+    let attackEvents = [];
+    let arcsData = [];
+    let selectedEvent = null;
+    let simulationMode = false;
+    let refreshInterval = null;
+
+    // Attack type colors
+    const ATTACK_COLORS = {
+      ransomware: '#ef4444',
+      ddos: '#f97316',
+      phishing: '#eab308',
+      malware: '#8b5cf6',
+      zero_day: '#dc2626',
+      credential_theft: '#06b6d4'
+    };
+
+    // Initialize Globe
+    function initGlobe() {
+      const globeElement = document.getElementById('globe-viz');
+      
+      globe = Globe()
+        .globeImageUrl('//unpkg.com/three-globe/example/img/earth-dark.jpg')
+        .backgroundImageUrl('//unpkg.com/three-globe/example/img/night-sky.png')
+        .showAtmosphere(true)
+        .atmosphereColor('#3a228a')
+        .atmosphereAltitude(0.25)
+        .pointOfView({ lat: 20, lng: 0, altitude: 2.5 })
+        (globeElement);
+
+      // Auto-rotate
+      globe.controls().autoRotate = true;
+      globe.controls().autoRotateSpeed = 0.5;
+
+      // Add arc layer
+      globe
+        .arcsData(arcsData)
+        .arcColor('color')
+        .arcDashLength(0.4)
+        .arcDashGap(4)
+        .arcDashInitialGap(0)
+        .arcDashAnimateTime(2000)
+        .arcStroke('stroke')
+        .arcCurve(0.45);
+
+      // Add points for origins and targets
+      globe
+        .pointsData(arcsData.flatMap(d => [
+          { lat: d.startLat, lng: d.startLng, color: d.color, size: 1.5 },
+          { lat: d.endLat, lng: d.endLng, color: d.color, size: 1.5 }
+        ]))
+        .pointColor('color')
+        .pointAltitude(0.05)
+        .pointRadius(0.5)
+        .pointsMerge(true);
+
+      // Click handler for arcs
+      globe.onArcClick(arc => {
+        if (arc && arc.__data__) {
+          selectEvent(arc.__data__.event);
+        }
+      });
+
+      // Hide loading
+      document.getElementById('loading').style.display = 'none';
+    }
+
+    // Load attack events
+    async function loadAttackEvents() {
+      try {
+        const typeFilter = document.getElementById('filter-type').value;
+        const severityFilter = document.getElementById('filter-severity').value;
+        const statusFilter = document.getElementById('filter-status').value;
+
+        let url = `${API_BASE}/api/attack_events?limit=100`;
+        if (typeFilter) url += `&attack_type=${typeFilter}`;
+        if (severityFilter) url += `&severity=${severityFilter}`;
+        if (statusFilter) url += `&status=${statusFilter}`;
+
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data.status === 'success') {
+          attackEvents = data.events;
+          updateArcs();
+          updateStats(data.events);
+        }
+      } catch (error) {
+        console.error('Failed to load attack events:', error);
+        addFeedItem('ERROR', 'Failed to load attack data');
+      }
+    }
+
+    // Update arcs on globe
+    function updateArcs() {
+      arcsData = attackEvents.map(event => ({
+        startLat: event.origin_lat,
+        startLng: event.origin_lng,
+        endLat: event.target_lat,
+        endLng: event.target_lng,
+        color: event.arc_color,
+        stroke: event.arc_width,
+        event: event
+      }));
+
+      globe.arcsData(arcsData);
+      
+      // Update points
+      const points = arcsData.flatMap(d => [
+        { lat: d.startLat, lng: d.startLng, color: d.color, size: 1.5, type: 'origin' },
+        { lat: d.endLat, lng: d.endLng, color: d.color, size: 1.5, type: 'target' }
+      ]);
+      globe.pointsData(points);
+    }
+
+    // Update statistics
+    function updateStats(events) {
+      const total = events.length;
+      const active = events.filter(e => e.status === 'active').length;
+      const critical = events.filter(e => e.severity === 'critical').length;
+      const actors = new Set(events.map(e => e.threat_actor)).size;
+
+      document.getElementById('stat-total').textContent = total;
+      document.getElementById('stat-active').textContent = active;
+      document.getElementById('stat-critical').textContent = critical;
+      document.getElementById('stat-actors').textContent = actors;
+    }
+
+    // Select event
+    function selectEvent(event) {
+      selectedEvent = event;
+      
+      // Update detail panel
+      document.getElementById('detail-type').textContent = event.attack_type.replace('_', ' ');
+      document.getElementById('detail-type').className = `event-type-badge ${event.attack_type}`;
+      document.getElementById('detail-severity').textContent = event.severity.toUpperCase();
+      document.getElementById('detail-severity').className = `severity-badge ${event.severity}`;
+      document.getElementById('detail-origin').textContent = event.origin_country;
+      document.getElementById('detail-target').textContent = event.target_country;
+      document.getElementById('detail-actor').textContent = event.threat_actor || 'Unknown';
+      document.getElementById('detail-malware').textContent = event.malware_family || 'N/A';
+      document.getElementById('detail-sector').textContent = event.target_sector;
+      document.getElementById('detail-cve').textContent = event.cve_exploited || 'N/A';
+      document.getElementById('detail-time').textContent = new Date(event.timestamp).toLocaleString();
+
+      // Get AI analysis
+      getAIAnalysis(event);
+
+      // Stop rotation when viewing detail
+      globe.controls().autoRotate = false;
+
+      // Focus on the arc
+      globe.pointOfView({
+        lat: (event.origin_lat + event.target_lat) / 2,
+        lng: (event.origin_lng + event.target_lng) / 2,
+        altitude: 1.5
+      }, 1000);
+    }
+
+    // Get AI analysis
+    async function getAIAnalysis(event) {
+      const analysisElement = document.getElementById('ai-analysis');
+      analysisElement.textContent = 'Analyzing attack pattern...';
+
+      try {
+        const query = `Analyze this cyber attack: ${event.attack_type} from ${event.origin_country} targeting ${event.target_country}'s ${event.target_sector} sector. Threat actor: ${event.threat_actor}. ${event.cve_exploited ? 'CVE exploited: ' + event.cve_exploited : ''}. Provide attack explanation and mitigation recommendations.`;
+        
+        const response = await fetch(`${API_BASE}/api/rag/query`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query, top_k: 3 })
+        });
+
+        const data = await response.json();
+        
+        if (data.data && data.data.answer) {
+          analysisElement.textContent = data.data.answer;
+        } else {
+          analysisElement.textContent = 'Unable to retrieve AI analysis at this time.';
+        }
+      } catch (error) {
+        analysisElement.textContent = 'AI analysis unavailable. Attack details shown above.';
+      }
+    }
+
+    // Add feed item
+    function addFeedItem(type, message) {
+      const feed = document.getElementById('live-feed');
+      const now = new Date();
+      const timestamp = now.toTimeString().split(' ')[0];
+
+      const item = document.createElement('div');
+      item.className = 'feed-item';
+      item.innerHTML = `
+        <span class="feed-timestamp">${timestamp}</span>
+        <span class="feed-event">[${type}]</span> ${message}
+      `;
+
+      feed.insertBefore(item, feed.firstChild);
+
+      // Keep only last 50 items
+      while (feed.children.length > 50) {
+        feed.removeChild(feed.lastChild);
+      }
+    }
+
+    // Toggle simulation
+    async function toggleSimulation(enabled) {
+      simulationMode = enabled;
+      
+      if (enabled) {
+        addFeedItem('SIMULATION', 'Attack simulation mode enabled');
+        // Generate initial burst
+        await generateBurst();
+      } else {
+        addFeedItem('SIMULATION', 'Attack simulation mode disabled');
+      }
+    }
+
+    // Generate burst
+    async function generateBurst() {
+      try {
+        const response = await fetch(`${API_BASE}/api/attack_events/simulate`, {
+          method: 'POST'
+        });
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+          const event = data.event;
+          addFeedItem('ATTACK', `${event.origin_country} → ${event.target_country} | ${event.attack_type}`);
+          
+          // Reload events
+          await loadAttackEvents();
+        }
+      } catch (error) {
+        console.error('Failed to generate burst:', error);
+      }
+    }
+
+    // Clear arcs
+    function clearArcs() {
+      arcsData = [];
+      globe.arcsData([]);
+      globe.pointsData([]);
+      attackEvents = [];
+      updateStats([]);
+      addFeedItem('SYSTEM', 'Cleared all attack arcs');
+    }
+
+    // Event listeners
+    document.getElementById('simulation-toggle').addEventListener('change', (e) => {
+      toggleSimulation(e.target.checked);
+    });
+
+    document.getElementById('refresh-btn').addEventListener('click', () => {
+      loadAttackEvents();
+      addFeedItem('SYSTEM', 'Refreshing attack data...');
+    });
+
+    document.getElementById('clear-btn').addEventListener('click', clearArcs);
+
+    document.getElementById('burst-btn').addEventListener('click', async () => {
+      addFeedItem('SYSTEM', 'Generating attack burst...');
+      for (let i = 0; i < 5; i++) {
+        await generateBurst();
+        await new Promise(r => setTimeout(r, 200));
+      }
+    });
+
+    // Filter change handlers
+    ['filter-type', 'filter-severity', 'filter-status'].forEach(id => {
+      document.getElementById(id).addEventListener('change', loadAttackEvents);
+    });
+
+    // Initialize
+    initGlobe();
+    loadAttackEvents();
+
+    // Auto-refresh every 10 seconds
+    refreshInterval = setInterval(loadAttackEvents, 10000);
+
+    // Cleanup
+    window.addEventListener('unload', () => {
+      if (refreshInterval) clearInterval(refreshInterval);
+    });
+  </script>
+</body>
+</html>

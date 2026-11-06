@@ -39,7 +39,7 @@ apscheduler==3.11.0
 structlog==24.4.0
 
 # Security & Cryptography
-cryptography==44.0.0
+cryptography==50.0.0
 
 # Utilities
 aiofiles==24.1.0
